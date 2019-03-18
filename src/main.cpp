@@ -105,14 +105,14 @@ int main() {
            */
 
           //set target vehicle control params
-          double SPEED_LIMIT = 53 / 2.24; //MPH->m/s
+          double SPEED_LIMIT = 49 / 2.24; //MPH->m/s
           string STATE = "KL";
           double target_speed = SPEED_LIMIT;
           if(car_d <= 4)
           {
             curr_lane = 0;
           }
-          else if(car_d <= 8)
+          else if(car_d < 8)
           {
             curr_lane = 1;
           }
@@ -127,7 +127,8 @@ int main() {
 
           //initialize collision avoidance
           bool collision = false;
-          double collision_buffer = 25; //meters
+          double collision_buffer = 20; //meters
+          double approach_buffer = 30; //meters
           if(prev_size > 0)
           {
             car_s = end_path_s;
@@ -147,7 +148,11 @@ int main() {
               double sensor_s_predicted = sensor_s + prev_size * sensor_v * delta_t;
               if(car_s < sensor_s_predicted && sensor_s_predicted - car_s < collision_buffer)
               {
-                target_speed = sensor_v;
+                target_speed = sensor_v - 0.2;
+                collision = true;
+              }
+              else if(car_s < sensor_s_predicted && sensor_s_predicted - car_s < approach_buffer)
+              {
                 collision = true;
               }
             }
@@ -202,14 +207,14 @@ int main() {
             }
           }
           //select next state with preference to passing on the left
-          if(curr_lane > 0 && collision == true && lcl_speed > target_speed + 1.75)
+          if(curr_lane > 0 && collision == true && lcl_speed > target_speed + 1.25)
           {
             STATE = "PLCL";
           }
-          else if(curr_lane < 2 && lcr_speed >= target_speed)
+          else if(curr_lane < 2 && (lcr_speed >= target_speed + 1.25 || lcr_cars.size() == 0))
           {
             //check if car is still getting up to speed in lane
-            if(collision == false && target_speed < SPEED_LIMIT - 2)
+            if(collision == false && car_speed < target_speed - 1.5)
             {
               STATE = "KL";
             }
@@ -223,11 +228,11 @@ int main() {
           //slow car down if collision detected
           if(ref_vel > target_speed)
           {
-            ref_vel -= 0.224; //m/s
+            ref_vel -= 0.22; //m/s
           }
           else if(ref_vel < target_speed)
           {
-            ref_vel += 0.224;
+            ref_vel += 0.22;
           }
           
           //implement PLCL state
@@ -248,7 +253,7 @@ int main() {
               TARGET_LANE += 1;
             }
           }
-
+          
           //create list of sparsely spaced waypoints for spline interpolation
           vector<double> sparse_pts_x;
           vector<double> sparse_pts_y;
